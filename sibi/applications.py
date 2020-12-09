@@ -10,12 +10,11 @@ from sibi.settings import logger
 class Sibi:
 
     def __init__(self,
-                 client_id: int = 0,
-                 tws_host: str = '192.168.74.130',
-                 tws_port: int = 7498,
-                 tws_max_connections: int = 49,
-                 xmlrpc_port: int = 7080):
-        logger.info("Creating APP")
+                 client_id: int,
+                 tws_host: str,
+                 tws_port: int,
+                 tws_max_connections: int,
+                 xmlrpc_port: int):
         ib_factory = IBClientFactory(client_id)
         reactor.connectTCP(tws_host, tws_port, ib_factory)
 
@@ -26,5 +25,10 @@ class Sibi:
         endpoint = endpoints.TCP4ServerEndpoint(reactor, xmlrpc_port)
         endpoint.listen(xmlrpc_factory)
 
-    def run(self):
+    @staticmethod
+    def run():
         reactor.run()
+
+    @staticmethod
+    def stop():
+        reactor.stop()

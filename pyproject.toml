@@ -1,9 +1,13 @@
 [tool.poetry]
 name = "sibi"
-version = "0.1.1"
+version = "0.1.2"
 description = "Synchronous Interactiver Brokers Interface"
 authors = ["Manuel Fedele <manuelfedele@gmail.com>"]
 license = "MIT"
+readme = "README.md"
+
+[tool.poetry.scripts]
+sibi = "sibi.main:app"
 
 [tool.poetry.dependencies]
 python = "^3.8"

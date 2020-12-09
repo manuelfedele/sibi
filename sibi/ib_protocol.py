@@ -27,7 +27,7 @@ class IBProtocol(Int32StringReceiver, TimeoutMixin):
 
         if self.factory.connState == CONNECTING:
             if len(fields) == 2:
-                logger.debug(f"Consibiating connection for {text}")
+                logger.debug(f"Consolidating connection for {text}")
                 self.finalize_connection(fields)
             else:
                 logger.error(f"Error while connecting")
