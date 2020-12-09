@@ -1,0 +1,13 @@
+*.log
+*.log.zip
+__pycache__
+.idea
+.venv
+dist
+venv
+twsapi_*
+IBJts
+META-INF
+ibapi.egg-info
+_trial_temp
+.env

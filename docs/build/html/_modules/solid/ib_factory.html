@@ -1,0 +1,407 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>solid.ib_factory &mdash; Solid 0.1 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> Solid
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">solid</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Solid</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>solid.ib_factory</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for solid.ib_factory</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">loguru</span> <span class="kn">import</span> <span class="n">logger</span>
+<span class="kn">from</span> <span class="nn">twisted.internet.defer</span> <span class="kn">import</span> <span class="n">Deferred</span>
+<span class="kn">from</span> <span class="nn">twisted.internet.protocol</span> <span class="kn">import</span> <span class="n">ReconnectingClientFactory</span>
+<span class="kn">from</span> <span class="nn">twisted.internet.tcp</span> <span class="kn">import</span> <span class="n">Connector</span>
+<span class="kn">from</span> <span class="nn">twisted.python.failure</span> <span class="kn">import</span> <span class="n">Failure</span>
+
+<span class="kn">from</span> <span class="nn">ibapi</span> <span class="kn">import</span> <span class="n">decoder</span>
+<span class="kn">from</span> <span class="nn">ibapi.client</span> <span class="kn">import</span> <span class="n">EClient</span>
+<span class="kn">from</span> <span class="nn">ibapi.common</span> <span class="kn">import</span> <span class="n">TickerId</span><span class="p">,</span> <span class="n">BarData</span><span class="p">,</span> <span class="n">TagValueList</span><span class="p">,</span> <span class="n">TickAttrib</span><span class="p">,</span> <span class="n">OrderId</span>
+<span class="kn">from</span> <span class="nn">ibapi.contract</span> <span class="kn">import</span> <span class="n">Contract</span><span class="p">,</span> <span class="n">ContractDetails</span>
+<span class="kn">from</span> <span class="nn">ibapi.order</span> <span class="kn">import</span> <span class="n">Order</span>
+<span class="kn">from</span> <span class="nn">ibapi.order_state</span> <span class="kn">import</span> <span class="n">OrderState</span>
+<span class="kn">from</span> <span class="nn">ibapi.ticktype</span> <span class="kn">import</span> <span class="n">TickType</span><span class="p">,</span> <span class="n">TickTypeEnum</span>
+<span class="kn">from</span> <span class="nn">ibapi.wrapper</span> <span class="kn">import</span> <span class="n">EWrapper</span>
+<span class="kn">from</span> <span class="nn">solid.decorators</span> <span class="kn">import</span> <span class="n">append</span><span class="p">,</span> <span class="n">publish</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">resolve</span>
+<span class="kn">from</span> <span class="nn">solid.exceptions</span> <span class="kn">import</span> <span class="n">IBException</span>
+<span class="kn">from</span> <span class="nn">solid.ib_protocol</span> <span class="kn">import</span> <span class="n">IBProtocol</span>
+
+
+<div class="viewcode-block" id="IBClientFactory"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory">[docs]</a><span class="k">class</span> <span class="nc">IBClientFactory</span><span class="p">(</span><span class="n">ReconnectingClientFactory</span><span class="p">,</span> <span class="n">EClient</span><span class="p">,</span> <span class="n">EWrapper</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This is the Factory that instantiates the IBProtocols instance.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        clientId (int): The clientId for TWS</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">protocol</span> <span class="o">=</span> <span class="n">IBProtocol</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">client_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">EClient</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wrapper</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;IBClientFactory&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">decoder</span> <span class="o">=</span> <span class="n">decoder</span><span class="o">.</span><span class="n">Decoder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">serverVersion</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">clientId</span> <span class="o">=</span> <span class="n">client_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">currentReqId</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nextValidOrderId</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deferredRequests</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deferredResults</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">additionalRequestInfo</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">deferredOrdersRequests</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deferredOrdersResults</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">additionalOrderInfo</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">activeMktDataSubscriptions</span> <span class="o">=</span> <span class="p">[]</span>
+
+<div class="viewcode-block" id="IBClientFactory.clientConnectionLost"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory.clientConnectionLost">[docs]</a>    <span class="k">def</span> <span class="nf">clientConnectionLost</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connector</span><span class="p">:</span> <span class="n">Connector</span><span class="p">,</span> <span class="n">reason</span><span class="p">:</span> <span class="n">Failure</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot; Internal reconnection method in case of connection lose &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Lost connection.  Reason: </span><span class="si">{</span><span class="n">reason</span><span class="o">.</span><span class="n">getErrorMessage</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">ReconnectingClientFactory</span><span class="o">.</span><span class="n">clientConnectionLost</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connector</span><span class="p">,</span> <span class="n">reason</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="IBClientFactory.clientConnectionFailed"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory.clientConnectionFailed">[docs]</a>    <span class="k">def</span> <span class="nf">clientConnectionFailed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connector</span><span class="p">:</span> <span class="n">Connector</span><span class="p">,</span> <span class="n">reason</span><span class="p">:</span> <span class="n">Failure</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot; Internal reconnection method in case of connection fail &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Connection failed.  Reason: </span><span class="si">{</span><span class="n">reason</span><span class="o">.</span><span class="n">getErrorMessage</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">ReconnectingClientFactory</span><span class="o">.</span><span class="n">clientConnectionFailed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">connector</span><span class="p">,</span> <span class="n">reason</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="IBClientFactory.getNextReqId"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory.getNextReqId">[docs]</a>    <span class="k">def</span> <span class="nf">getNextReqId</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot; Increments the reqId for TWS. This is automatically called by **@request** decorator &quot;&quot;&quot;</span>
+
+        <span class="n">reqId</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">currentReqId</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">currentReqId</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">currentReqId</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">reqId</span></div>
+
+<div class="viewcode-block" id="IBClientFactory.nextValidId"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory.nextValidId">[docs]</a>    <span class="k">def</span> <span class="nf">nextValidId</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">orderId</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        nextValidId event provides the next valid identifier needed to place an order.</span>
+<span class="sd">        This is automatically called by TWS</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">IBClientFactory</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">nextValidId</span><span class="p">(</span><span class="n">orderId</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nextValidOrderId</span> <span class="o">=</span> <span class="n">orderId</span>
+        <span class="k">return</span> <span class="n">orderId</span></div>
+
+<div class="viewcode-block" id="IBClientFactory.placeOrder"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory.placeOrder">[docs]</a>    <span class="nd">@request</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">placeOrder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">orderId</span><span class="p">:</span> <span class="n">OrderId</span><span class="p">,</span> <span class="n">contract</span><span class="p">:</span> <span class="n">Contract</span><span class="p">,</span> <span class="n">order</span><span class="p">:</span> <span class="n">Order</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Places an order.</span>
+<span class="sd">        Immediately after the order is submitted correctly, the TWS will start sending events concerning</span>
+<span class="sd">        the order&#39;s activity via **openOrder** and **orderStatus** methods</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">IBClientFactory</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">placeOrder</span><span class="p">(</span><span class="n">orderId</span><span class="p">,</span> <span class="n">contract</span><span class="p">,</span> <span class="n">order</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deferredRequests</span><span class="p">[</span><span class="n">orderId</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="IBClientFactory.openOrder"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory.openOrder">[docs]</a>    <span class="nd">@resolve</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">openOrder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">orderId</span><span class="p">:</span> <span class="n">OrderId</span><span class="p">,</span> <span class="n">contract</span><span class="p">:</span> <span class="n">Contract</span><span class="p">,</span> <span class="n">order</span><span class="p">:</span> <span class="n">Order</span><span class="p">,</span> <span class="n">orderState</span><span class="p">:</span> <span class="n">OrderState</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; TODO: Test this &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="IBClientFactory.reqContractDetails"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory.reqContractDetails">[docs]</a>    <span class="nd">@request</span>
+    <span class="k">def</span> <span class="nf">reqContractDetails</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reqId</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">contract</span><span class="p">:</span> <span class="n">Contract</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Deferred</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">IBClientFactory</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">reqContractDetails</span><span class="p">(</span><span class="n">reqId</span><span class="p">,</span> <span class="n">contract</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deferredRequests</span><span class="p">[</span><span class="n">reqId</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="IBClientFactory.reqHistoricalData"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory.reqHistoricalData">[docs]</a>    <span class="nd">@request</span>
+    <span class="k">def</span> <span class="nf">reqHistoricalData</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reqId</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">contract</span><span class="p">:</span> <span class="n">Contract</span><span class="p">,</span> <span class="n">endDateTime</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">durationStr</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">barSizeSetting</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                          <span class="n">whatToShow</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">useRTH</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">formatDate</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">keepUpToDate</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">chartOptions</span><span class="p">:</span> <span class="n">TagValueList</span><span class="p">,</span>
+                          <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Deferred</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Requests historical data for contract.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">IBClientFactory</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">reqHistoricalData</span><span class="p">(</span><span class="n">reqId</span><span class="p">,</span> <span class="n">contract</span><span class="p">,</span> <span class="n">endDateTime</span><span class="p">,</span> <span class="n">durationStr</span><span class="p">,</span> <span class="n">barSizeSetting</span><span class="p">,</span>
+                                                       <span class="n">whatToShow</span><span class="p">,</span> <span class="n">useRTH</span><span class="p">,</span> <span class="n">formatDate</span><span class="p">,</span> <span class="n">keepUpToDate</span><span class="p">,</span> <span class="n">chartOptions</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deferredRequests</span><span class="p">[</span><span class="n">reqId</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="IBClientFactory.reqMktData"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory.reqMktData">[docs]</a>    <span class="nd">@request</span>
+    <span class="nd">@resolve</span>
+    <span class="k">def</span> <span class="nf">reqMktData</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reqId</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">contract</span><span class="p">:</span> <span class="n">Contract</span><span class="p">,</span> <span class="n">genericTickList</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">snapshot</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                   <span class="n">regulatorySnapshot</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">mktDataOptions</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span> <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+
+        <span class="sd">&quot;&quot;&quot; Starts live market data polling for contract&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">mktDataOptions</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">mktDataOptions</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">IBClientFactory</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">reqMktData</span><span class="p">(</span><span class="n">reqId</span><span class="p">,</span> <span class="n">contract</span><span class="p">,</span> <span class="n">genericTickList</span><span class="p">,</span> <span class="n">snapshot</span><span class="p">,</span> <span class="n">regulatorySnapshot</span><span class="p">,</span>
+                                                <span class="n">mktDataOptions</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deferredResults</span><span class="p">[</span><span class="n">reqId</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;reqId&quot;</span><span class="p">:</span> <span class="n">reqId</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">activeMktDataSubscriptions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">reqId</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">additionalRequestInfo</span><span class="p">[</span><span class="n">reqId</span><span class="p">]</span> <span class="o">=</span> <span class="n">contract</span><span class="o">.</span><span class="vm">__dict__</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deferredRequests</span><span class="p">[</span><span class="n">reqId</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="IBClientFactory.cancelMktData"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory.cancelMktData">[docs]</a>    <span class="nd">@request</span>
+    <span class="nd">@resolve</span>
+    <span class="k">def</span> <span class="nf">cancelMktData</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reqId</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">tickerId</span><span class="p">:</span> <span class="n">TickerId</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">tickerId</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">_tickerId</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">activeMktDataSubscriptions</span><span class="p">:</span>
+                <span class="nb">super</span><span class="p">(</span><span class="n">IBClientFactory</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">cancelMktData</span><span class="p">(</span><span class="n">_tickerId</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">deferredResults</span><span class="p">[</span><span class="n">reqId</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;reqId&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">activeMktDataSubscriptions</span><span class="p">}</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">activeMktDataSubscriptions</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">deferredResults</span><span class="p">[</span><span class="n">reqId</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;reqId&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">(</span><span class="n">IBClientFactory</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">cancelMktData</span><span class="p">(</span><span class="n">tickerId</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">deferredResults</span><span class="p">[</span><span class="n">reqId</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;reqId&quot;</span><span class="p">:</span> <span class="n">reqId</span><span class="p">}</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deferredRequests</span><span class="p">[</span><span class="n">reqId</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="IBClientFactory.contractDetails"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory.contractDetails">[docs]</a>    <span class="nd">@append</span>
+    <span class="k">def</span> <span class="nf">contractDetails</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reqId</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">contractDetails</span><span class="p">:</span> <span class="n">ContractDetails</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">contractDetails</span><span class="o">.</span><span class="n">contract</span><span class="o">.</span><span class="vm">__dict__</span></div>
+
+<div class="viewcode-block" id="IBClientFactory.historicalData"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory.historicalData">[docs]</a>    <span class="nd">@append</span>
+    <span class="k">def</span> <span class="nf">historicalData</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reqId</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">bar</span><span class="p">:</span> <span class="n">BarData</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot; Adds a BAR to reqId deferred &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">bar</span><span class="o">.</span><span class="vm">__dict__</span></div>
+
+<div class="viewcode-block" id="IBClientFactory.tickPrice"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory.tickPrice">[docs]</a>    <span class="nd">@publish</span>
+    <span class="k">def</span> <span class="nf">tickPrice</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reqId</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">tickType</span><span class="p">:</span> <span class="n">TickType</span><span class="p">,</span> <span class="n">price</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">attrib</span><span class="p">:</span> <span class="n">TickAttrib</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot; This method is called by IB server when a new tickPrice is available for active live data market lines &quot;&quot;&quot;</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;reqId&quot;</span><span class="p">:</span> <span class="n">reqId</span><span class="p">,</span>
+            <span class="s2">&quot;tickType&quot;</span><span class="p">:</span> <span class="n">TickTypeEnum</span><span class="o">.</span><span class="n">to_str</span><span class="p">(</span><span class="n">tickType</span><span class="p">),</span>
+            <span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="n">price</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">data</span></div>
+
+<div class="viewcode-block" id="IBClientFactory.tickSize"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory.tickSize">[docs]</a>    <span class="nd">@publish</span>
+    <span class="k">def</span> <span class="nf">tickSize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reqId</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">tickType</span><span class="p">:</span> <span class="n">TickType</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;reqId&quot;</span><span class="p">:</span> <span class="n">reqId</span><span class="p">,</span>
+            <span class="s2">&quot;tickType&quot;</span><span class="p">:</span> <span class="n">TickTypeEnum</span><span class="o">.</span><span class="n">to_str</span><span class="p">(</span><span class="n">tickType</span><span class="p">),</span>
+            <span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="n">size</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">data</span></div>
+
+<div class="viewcode-block" id="IBClientFactory.tickString"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory.tickString">[docs]</a>    <span class="nd">@publish</span>
+    <span class="k">def</span> <span class="nf">tickString</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reqId</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">tickType</span><span class="p">:</span> <span class="n">TickType</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;reqId&quot;</span><span class="p">:</span> <span class="n">reqId</span><span class="p">,</span>
+            <span class="s2">&quot;tickType&quot;</span><span class="p">:</span> <span class="n">TickTypeEnum</span><span class="o">.</span><span class="n">to_str</span><span class="p">(</span><span class="n">tickType</span><span class="p">),</span>
+            <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">value</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">data</span></div>
+
+<div class="viewcode-block" id="IBClientFactory.tickGeneric"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory.tickGeneric">[docs]</a>    <span class="nd">@publish</span>
+    <span class="k">def</span> <span class="nf">tickGeneric</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reqId</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">tickType</span><span class="p">:</span> <span class="n">TickType</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;reqId&quot;</span><span class="p">:</span> <span class="n">reqId</span><span class="p">,</span>
+            <span class="s2">&quot;tickType&quot;</span><span class="p">:</span> <span class="n">TickTypeEnum</span><span class="o">.</span><span class="n">to_str</span><span class="p">(</span><span class="n">tickType</span><span class="p">),</span>
+            <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">value</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">data</span></div>
+
+<div class="viewcode-block" id="IBClientFactory.historicalDataUpdate"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory.historicalDataUpdate">[docs]</a>    <span class="nd">@publish</span>
+    <span class="k">def</span> <span class="nf">historicalDataUpdate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reqId</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">bar</span><span class="p">:</span> <span class="n">BarData</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;reqId&quot;</span><span class="p">:</span> <span class="n">reqId</span><span class="p">,</span>
+            <span class="s2">&quot;barData&quot;</span><span class="p">:</span> <span class="n">BarData</span><span class="o">.</span><span class="vm">__dict__</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">data</span></div>
+
+<div class="viewcode-block" id="IBClientFactory.historicalDataEnd"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory.historicalDataEnd">[docs]</a>    <span class="nd">@resolve</span>
+    <span class="k">def</span> <span class="nf">historicalDataEnd</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reqId</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">end</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="IBClientFactory.contractDetailsEnd"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory.contractDetailsEnd">[docs]</a>    <span class="nd">@resolve</span>
+    <span class="k">def</span> <span class="nf">contractDetailsEnd</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reqId</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="IBClientFactory.error"><a class="viewcode-back" href="../../solid.html#solid.ib_factory.IBClientFactory.error">[docs]</a>    <span class="k">def</span> <span class="nf">error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reqId</span><span class="p">:</span> <span class="n">TickerId</span><span class="p">,</span> <span class="n">errorCode</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">errorString</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;GenericError&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">NON_ERROR_CODES</span> <span class="o">=</span> <span class="p">[</span><span class="mi">2104</span><span class="p">,</span> <span class="mi">2106</span><span class="p">,</span> <span class="mi">2158</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">errorCode</span> <span class="ow">in</span> <span class="n">NON_ERROR_CODES</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">errorString</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error. Id: </span><span class="si">{</span><span class="n">reqId</span><span class="si">}</span><span class="s2"> Code: </span><span class="si">{</span><span class="n">errorCode</span><span class="si">}</span><span class="s2"> Msg: </span><span class="si">{</span><span class="n">errorString</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">reqId</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">deferredRequests</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">deferredRequests</span><span class="p">[</span><span class="n">reqId</span><span class="p">]</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="n">IBException</span><span class="p">(</span><span class="n">errorCode</span><span class="p">,</span> <span class="n">errorString</span><span class="p">)</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">)</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">deferredRequests</span><span class="p">[</span><span class="n">reqId</span><span class="p">]</span></div></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, Manuel Fedele
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
