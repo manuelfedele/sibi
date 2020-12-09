@@ -1,13 +1,13 @@
 import typer
 
-from sibi import Solid
+from sibi import Sibi
 
 app = typer.Typer()
 
 
 @app.command()
 def run():
-    server = Solid()
+    server = Sibi()
     server.run()
 
 

@@ -7,7 +7,7 @@ from sibi.xmlrpc_server import XMLRPCServer
 from sibi.settings import logger
 
 
-class Solid:
+class Sibi:
 
     def __init__(self,
                  client_id: int = 0,

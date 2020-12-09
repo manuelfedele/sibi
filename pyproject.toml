@@ -8,6 +8,10 @@ license = "MIT"
 [tool.poetry.dependencies]
 python = "^3.8"
 Twisted = "^20.3.0"
+typer = "^0.3.2"
+loguru = "^0.5.3"
+redis = "^3.5.3"
+treq = "^20.9.0"
 
 [tool.poetry.dev-dependencies]
 
