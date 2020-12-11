@@ -2,7 +2,6 @@ import datetime
 import sys
 from typing import List
 
-from loguru import logger
 from twisted.internet import reactor
 from twisted.web import xmlrpc
 from twisted.web.client import HTTPConnectionPool, Agent
