@@ -4,6 +4,9 @@ from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.internet.tcp import Connector
 from twisted.python.failure import Failure
 
+from sibi.decorators import append, publish, request, resolve
+from sibi.exceptions import IBException
+from sibi.ib_protocol import IBProtocol
 from sibi.ibapi import decoder
 from sibi.ibapi.client import EClient
 from sibi.ibapi.common import TickerId, BarData, TagValueList, TickAttrib, OrderId
@@ -12,9 +15,7 @@ from sibi.ibapi.order import Order
 from sibi.ibapi.order_state import OrderState
 from sibi.ibapi.ticktype import TickType, TickTypeEnum
 from sibi.ibapi.wrapper import EWrapper
-from sibi.decorators import append, publish, request, resolve
-from sibi.exceptions import IBException
-from sibi.ib_protocol import IBProtocol
+from sibi.models import OrderStatus
 
 
 class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
@@ -59,21 +60,23 @@ class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
         self.currentReqId = self.currentReqId + 1
         return reqId
 
-    def getNextOrderId(self, numIds: int = -1):
-        super(IBClientFactory, self).reqIds(numIds)
-        return self.nextValidOrderId
+    def getNextOrderId(self):
+        orderId = self.nextValidOrderId
+        self.nextValidOrderId = self.nextValidOrderId + 1
+        return orderId
 
     def nextValidId(self, orderId: int) -> int:
         """
         nextValidId event provides the next valid identifier needed to place an order.
         This is automatically called by TWS
         """
-
+        logger.info(f"Next valid id initialized to {orderId}")
         super(IBClientFactory, self).nextValidId(orderId)
         self.nextValidOrderId = orderId
         return orderId
 
     @request(order=True)
+    @resolve(order=True)
     def placeOrder(self, orderId: OrderId, contract: Contract, order: Order):
         """
         Places an order.
@@ -81,12 +84,19 @@ class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
         the order's activity via **openOrder** and **orderStatus** methods
         """
         super(IBClientFactory, self).placeOrder(orderId, contract, order)
-        return self.deferredRequests[orderId]
+        self.deferredOrdersResults[orderId] = {"orderId": orderId}
+        return self.deferredOrdersRequests[orderId]
 
-    @resolve(order=True)
+    @publish(order=True)
     def openOrder(self, orderId: OrderId, contract: Contract, order: Order, orderState: OrderState):
-        """ TODO: Test this """
-        pass
+        super(IBClientFactory, self).openOrder(orderId, contract, order, orderState)
+        return order.__dict__
+
+    @publish(order=True)
+    def orderStatus(self, *args, **kwargs):
+        super(IBClientFactory, self).orderStatus(*args, **kwargs)
+        orderStatus = OrderStatus(*args)
+        return orderStatus.__dict__
 
     @request
     def reqContractDetails(self, reqId: int, contract: Contract, **kwargs) -> Deferred:
@@ -139,6 +149,12 @@ class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
             super(IBClientFactory, self).cancelMktData(tickerId)
             self.deferredResults[reqId] = {"reqId": reqId}
         return self.deferredRequests[reqId]
+
+    @request(order=True)
+    @resolve(order=True)
+    def cancelOrder(self, orderId: OrderId):
+        # TODO: Test this
+        super(IBClientFactory, self).cancelOrder(orderId)
 
     @append
     def contractDetails(self, reqId: int, contractDetails: ContractDetails) -> dict:
@@ -209,5 +225,5 @@ class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
             logger.error(f"Error. Id: {reqId} Code: {errorCode} Msg: {errorString}")
 
         if reqId in self.deferredRequests.keys():
-            self.deferredRequests[reqId].callback(IBException(errorCode, errorString).__dict__)
+            self.deferredRequests[reqId].callback(IBException(errorCode, errorString, reqId).__dict__)
             del self.deferredRequests[reqId]

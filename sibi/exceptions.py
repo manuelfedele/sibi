@@ -1,5 +1,6 @@
 class IBException(Exception):
-    def __init__(self, code, message):
+    def __init__(self, code, message, reqId=None):
+        self.reqId = None
         self.code = code
         self.message = message
 

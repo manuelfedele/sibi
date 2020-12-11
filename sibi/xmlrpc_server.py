@@ -72,7 +72,7 @@ class XMLRPCServer(xmlrpc.XMLRPC):
 
     def xmlrpc_reqMktData(
             self, conId: str = 0, symbol: str = '', secType: str = '', currency: str = '', exchange: str = '',
-            localSymbol: str = ''):
+            localSymbol: str = '', lastTradeDateOrContractMonth: str = '', strike: float = 0., right: str = ''):
         contract = Contract()
         contract.conId = conId
         contract.symbol = symbol  # "EUR"
@@ -80,6 +80,9 @@ class XMLRPCServer(xmlrpc.XMLRPC):
         contract.currency = currency  # "GBP"
         contract.exchange = exchange  # "IDEALPRO"
         contract.localSymbol = localSymbol
+        contract.lastTradeDateOrContractMonth = lastTradeDateOrContractMonth
+        contract.strike = strike
+        contract.right = right
         contract.includeExpired = False
         result = self.factory.reqMktData(contract)
         return result
@@ -97,18 +100,38 @@ class XMLRPCServer(xmlrpc.XMLRPC):
 
     def xmlrpc_placeOrder(
             self, symbol: str = '', secType: str = 'STK', currency: str = 'USD', exchange: str = 'SMART',
-            lastTradeDateOrContractMonth: str = '', strike: str = '', right: str = '', comboLegs=None,
-            action: str = 'BUY', orderType: str = 'MIDPRICE', totalQuantity: int = 1,
-            limitPrice: float = sys.float_info.max):
+            lastTradeDateOrContractMonth: str = '', strike: str = '', right: str = '', orderType: str = 'MKT',
+            limitPrice: float = sys.float_info.max, totalQuantity: int = 1, action: str = 'BUY', comboLegs=None,
+            allOrNone: bool = True):
+        """ This procedure places an Order if a valid contract and a valid order are provided
+
+            Args:
+                symbol (str): IB symbol (eg. SPY, AAPL, DAX)
+                secType (str): The type of security (eg. IND, STK, OPT)
+                currency (str): The currency of the security (eg. EUR, USD)
+                exchange (str): The exchange (eg SMART, CBOE)
+                lastTradeDateOrContractMonth (str): This is a date for OPTIONS (eg. 20210104) or a month for FUTURES (eg. 202103)
+                strike (str): Strike price for options
+                right (str): Right for options (eg. C or CALL, P or PUT)
+                orderType (str): Order's typlogy (eg. MKT, LMT)
+                limitPrice (float): A limit price provided if LMT order
+                totalQuantity (int): Quantity to buy
+                action (int): Order's action (BUY/SELL)
+                comboLegs (list): If provided, indentifies this order as a Combo order
+                allOrNone (bool): Indicates whether or not all the order has to be filled on a single execution.
+        """
 
         contract = Contract()
         contract.symbol = symbol
         contract.secType = secType
         contract.currency = currency
         contract.exchange = exchange
-        contract.lastTradeDateOrContractMonth = lastTradeDateOrContractMonth
-        contract.strike = strike
-        contract.right = right
+        if lastTradeDateOrContractMonth:
+            contract.lastTradeDateOrContractMonth = lastTradeDateOrContractMonth
+        if strike:
+            contract.strike = strike
+        if right:
+            contract.right = right
         contract.comboLegs = []
 
         if comboLegs and secType == 'BAG':
@@ -122,7 +145,11 @@ class XMLRPCServer(xmlrpc.XMLRPC):
         order.action = action
         order.orderType = orderType
         order.totalQuantity = totalQuantity
-        order.lmtPrice = limitPrice
-        logger.error(contract)
-        logger.warning(order)
-        return self.factory.getNextOrderId()
+        order.lmtPrice = float(limitPrice)
+        order.allOrNone = allOrNone
+        result = self.factory.placeOrder(contract, order)
+        return result
+
+    def xmlrpc_cancelOrder(self, orderId: int):
+        result = self.factory.cancelOrder(orderId)
+        return result

@@ -2,11 +2,10 @@ import json
 from functools import wraps
 
 import redis
-import treq
 from loguru import logger
 from twisted.internet import defer
 
-from sibi.settings import WEBHOOK_URL
+
 
 try:
     r = redis.StrictRedis(host="localhost", port=6379, db=0)
@@ -74,8 +73,6 @@ def publish(method=None, order=False):
             identifier = args[0]
             if additionalInfoDict.get(identifier):
                 data = {**data, **additionalInfoDict[identifier]}
-            d = treq.get(url=WEBHOOK_URL.format(channel=function.__name__), params=data)
-            d.addCallbacks(logger.warning, logger.error)
             data = json.dumps(data)
             r.publish(function.__name__, data)
             logger.info(f"Pushing {data} on channel {function.__name__}")
