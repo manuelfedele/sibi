@@ -19,19 +19,18 @@ from sibi.models import OrderStatus
 
 
 class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
-    """
-    This is the Factory that instantiates the IBProtocols instance.
-
-    Args:
-        clientId (int): The clientId for TWS
-    """
     protocol = IBProtocol
 
-    def __init__(self, client_id: int) -> None:
+    def __init__(self, clientId: int) -> None:
+        """ This is the Factory that instantiates the IBProtocols instance.
+
+            Args:
+                clientId (int): The clientId for TWS
+            """
         EClient.__init__(self, wrapper=self)
         self.name = "IBClientFactory"
         self.decoder = decoder.Decoder(self, self.serverVersion())
-        self.clientId = client_id
+        self.clientId = clientId
         self.currentReqId = 1
         self.nextValidOrderId = -1
         self.deferredRequests = {}
@@ -45,16 +44,18 @@ class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
 
     def clientConnectionLost(self, connector: Connector, reason: Failure) -> None:
         """ Internal reconnection method in case of connection lose """
+
         logger.warning(f"Lost connection.  Reason: {reason.getErrorMessage()}")
         ReconnectingClientFactory.clientConnectionLost(self, connector, reason)
 
     def clientConnectionFailed(self, connector: Connector, reason: Failure) -> None:
         """ Internal reconnection method in case of connection fail """
+
         logger.warning(f"Connection failed.  Reason: {reason.getErrorMessage()}")
         ReconnectingClientFactory.clientConnectionFailed(self, connector, reason)
 
     def getNextReqId(self) -> int:
-        """ Increments the reqId for TWS. This is automatically called by **@request** decorator """
+        """  Increments the reqId for TWS. This is automatically called by **@request** decorator """
 
         reqId = self.currentReqId
         self.currentReqId = self.currentReqId + 1
@@ -66,10 +67,10 @@ class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
         return orderId
 
     def nextValidId(self, orderId: int) -> int:
+        """ nextValidId event provides the next valid identifier needed to place an order.
+         This is automatically called by TWS
         """
-        nextValidId event provides the next valid identifier needed to place an order.
-        This is automatically called by TWS
-        """
+
         logger.info(f"Next valid id initialized to {orderId}")
         super(IBClientFactory, self).nextValidId(orderId)
         self.nextValidOrderId = orderId
@@ -78,11 +79,10 @@ class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
     @request(order=True)
     @resolve(order=True)
     def placeOrder(self, orderId: OrderId, contract: Contract, order: Order):
+        """ Places an order. Immediately after the order is submitted correctly, the TWS will start sending events
+         concerning the order's activity via **openOrder** and **orderStatus** methods
         """
-        Places an order.
-        Immediately after the order is submitted correctly, the TWS will start sending events concerning
-        the order's activity via **openOrder** and **orderStatus** methods
-        """
+
         super(IBClientFactory, self).placeOrder(orderId, contract, order)
         self.deferredOrdersResults[orderId] = {"orderId": orderId}
         return self.deferredOrdersRequests[orderId]
@@ -93,13 +93,22 @@ class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
         return order.__dict__
 
     @publish(order=True)
-    def orderStatus(self, *args, **kwargs):
-        super(IBClientFactory, self).orderStatus(*args, **kwargs)
-        orderStatus = OrderStatus(*args)
+    def orderStatus(
+            self, orderId: OrderId, status: str, filled: float, remaining: float, avgFillPrice: float, permId: int,
+            parentId: int, lastFillPrice: float, clientId: int, whyHeld: str, mktCapPrice: float):
+
+        super(IBClientFactory, self).orderStatus(
+            orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld,
+            mktCapPrice)
+        orderStatus = OrderStatus(
+            orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld,
+            mktCapPrice)
         return orderStatus.__dict__
 
     @request
     def reqContractDetails(self, reqId: int, contract: Contract, **kwargs) -> Deferred:
+        logger.debug(contract.__dict__)
+
         super(IBClientFactory, self).reqContractDetails(reqId, contract)
         return self.deferredRequests[reqId]
 
@@ -108,9 +117,7 @@ class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
             self, reqId: int, contract: Contract, endDateTime: str, durationStr: str, barSizeSetting: str,
             whatToShow: str, useRTH: int, formatDate: int, keepUpToDate: bool, chartOptions: TagValueList,
             **kwargs) -> Deferred:
-        """
-        Requests historical data for contract.
-        """
+        """ Requests historical data for contract. """
 
         super(IBClientFactory, self).reqHistoricalData(
             reqId, contract, endDateTime, durationStr, barSizeSetting, whatToShow, useRTH, formatDate, keepUpToDate,
@@ -123,8 +130,8 @@ class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
     def reqMktData(
             self, reqId: int, contract: Contract, genericTickList: str = "", snapshot: bool = False,
             regulatorySnapshot: bool = False, mktDataOptions=None, **kwargs, ) -> None:
-
         """ Starts live market data polling for specified contract """
+
         if mktDataOptions is None:
             mktDataOptions = []
 
@@ -163,6 +170,7 @@ class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
     @append
     def historicalData(self, reqId: int, bar: BarData) -> dict:
         """ Adds a BAR to reqId deferred """
+
         return bar.__dict__
 
     @publish

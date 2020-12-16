@@ -1,4 +1,3 @@
-import datetime
 import sys
 from typing import List
 
@@ -40,10 +39,10 @@ class XMLRPCServer(xmlrpc.XMLRPC):
             right (str): Right for options (eg. C or CALL, P or PUT)
         """
         contract = Contract()
-        contract.symbol = symbol  # "EUR"
-        contract.secType = secType  # "CASH"
-        contract.currency = currency  # "GBP"
-        contract.exchange = exchange  # "IDEALPRO"
+        contract.symbol = symbol
+        contract.secType = secType
+        contract.currency = currency
+        contract.exchange = exchange
         contract.lastTradeDateOrContractMonth = lastTradeDateOrContractMonth
         contract.strike = strike
         contract.right = right
@@ -53,32 +52,30 @@ class XMLRPCServer(xmlrpc.XMLRPC):
         return result
 
     def xmlrpc_reqHistoricalData(
-            self, symbol: str = '', secType: str = '', currency: str = '', exchange: str = '', durationStr: str = '1 M',
-            barSizeSetting: str = '1 hour', whatToShow: str = 'MIDPOINT', useRTH: int = 1, formatDate: int = 1,
-            keepUpToDate: bool = False, chartOptions=None) -> List[BarData]:
+            self, symbol: str = '', secType: str = '', currency: str = '', exchange: str = '', endDateTime: str = '',
+            durationStr: str = '1 M', barSizeSetting: str = '1 day', whatToShow: str = 'MIDPOINT', useRTH: int = 1,
+            formatDate: int = 1, keepUpToDate: bool = False, chartOptions=None) -> List[BarData]:
         if chartOptions is None:
             chartOptions = []
         contract = Contract()
-        contract.symbol = symbol  # "EUR"
-        contract.secType = secType  # "CASH"
-        contract.currency = currency  # "GBP"
-        contract.exchange = exchange  # "IDEALPRO"
-        query_time = (datetime.datetime.today() - datetime.timedelta(days=5)).strftime("%Y%m%d %H:%M:%S")
+        contract.symbol = symbol
+        contract.secType = secType
+        contract.currency = currency
+        contract.exchange = exchange
         result = self.factory.reqHistoricalData(
-            contract, query_time, durationStr, barSizeSetting, whatToShow, useRTH, formatDate, keepUpToDate,
+            contract, endDateTime, durationStr, barSizeSetting, whatToShow, useRTH, formatDate, keepUpToDate,
             chartOptions)
         return result
 
     def xmlrpc_reqMktData(
             self, conId: str = 0, symbol: str = '', secType: str = '', currency: str = '', exchange: str = '',
-            localSymbol: str = '', lastTradeDateOrContractMonth: str = '', strike: float = 0., right: str = ''):
+            lastTradeDateOrContractMonth: str = '', strike: float = 0., right: str = ''):
         contract = Contract()
         contract.conId = conId
-        contract.symbol = symbol  # "EUR"
-        contract.secType = secType  # "CASH"
-        contract.currency = currency  # "GBP"
-        contract.exchange = exchange  # "IDEALPRO"
-        contract.localSymbol = localSymbol
+        contract.symbol = symbol
+        contract.secType = secType
+        contract.currency = currency
+        contract.exchange = exchange
         contract.lastTradeDateOrContractMonth = lastTradeDateOrContractMonth
         contract.strike = strike
         contract.right = right
@@ -146,6 +143,8 @@ class XMLRPCServer(xmlrpc.XMLRPC):
         order.totalQuantity = totalQuantity
         order.lmtPrice = float(limitPrice)
         order.allOrNone = allOrNone
+        order.smartComboRoutingParams = []
+
         result = self.factory.placeOrder(contract, order)
         return result
 

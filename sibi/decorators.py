@@ -5,8 +5,6 @@ import redis
 from loguru import logger
 from twisted.internet import defer
 
-
-
 try:
     r = redis.StrictRedis(host="localhost", port=6379, db=0)
 except Exception as e:
@@ -75,7 +73,7 @@ def publish(method=None, order=False):
                 data = {**data, **additionalInfoDict[identifier]}
             data = json.dumps(data)
             r.publish(function.__name__, data)
-            logger.info(f"Pushing {data} on channel {function.__name__}")
+            logger.debug(f"Pushing data on channel {function.__name__}")
             return data
 
         return wrapper
@@ -94,7 +92,7 @@ def append(method):
             self.deferredResults[reqId] = []
         self.deferredResults[reqId].append(data)
 
-        logger.debug(f"Start publishing {reqId} on channel {method.__name__}")
+        logger.debug(f"Appending {reqId} from {method.__name__}")
         return data
 
     return wrapper
