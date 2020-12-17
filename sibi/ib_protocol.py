@@ -13,7 +13,6 @@ PROTOCOL_TIMEOUT = 10
 
 
 class IBProtocol(Int32StringReceiver, TimeoutMixin):
-
     def __init__(self):
         self.setTimeout(PROTOCOL_TIMEOUT)
 
@@ -65,7 +64,7 @@ class IBProtocol(Int32StringReceiver, TimeoutMixin):
         v100version = "v%d..%d" % (MIN_CLIENT_VER, MAX_CLIENT_VER)
         msg = self.make_msg(v100version)
 
-        msg2 = str.encode(v100prefix, 'ascii') + msg
+        msg2 = str.encode(v100prefix, "ascii") + msg
 
         self.sendMsg(msg2)
 
@@ -75,7 +74,9 @@ class IBProtocol(Int32StringReceiver, TimeoutMixin):
         """
         (server_version, conn_time) = fields
         server_version = int(server_version)
-        logger.info(f"{self.factory.name}: ANSWER Version:{server_version} time:{conn_time}")
+        logger.info(
+            f"{self.factory.name}: ANSWER Version:{server_version} time:{conn_time}"
+        )
         self.factory.connTime = conn_time
         self.factory.serverVersion_ = server_version
         self.factory.decoder.serverVersion = self.factory.serverVersion()
@@ -110,7 +111,7 @@ class IBProtocol(Int32StringReceiver, TimeoutMixin):
             value = int(value)
 
         # we add the null terminator and return
-        field = str(value) + '\0'
+        field = str(value) + "\0"
         return field
 
     @staticmethod

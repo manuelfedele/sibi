@@ -22,11 +22,11 @@ class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
     protocol = IBProtocol
 
     def __init__(self, clientId: int) -> None:
-        """ This is the Factory that instantiates the IBProtocols instance.
+        """This is the Factory that instantiates the IBProtocols instance.
 
-            Args:
-                clientId (int): The clientId for TWS
-            """
+        Args:
+            clientId (int): The clientId for TWS
+        """
         EClient.__init__(self, wrapper=self)
         self.name = "IBClientFactory"
         self.decoder = decoder.Decoder(self, self.serverVersion())
@@ -67,8 +67,8 @@ class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
         return orderId
 
     def nextValidId(self, orderId: int) -> int:
-        """ nextValidId event provides the next valid identifier needed to place an order.
-         This is automatically called by TWS
+        """nextValidId event provides the next valid identifier needed to place an order.
+        This is automatically called by TWS
         """
 
         logger.info(f"Next valid id initialized to {orderId}")
@@ -79,8 +79,8 @@ class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
     @request(order=True)
     @resolve(order=True)
     def placeOrder(self, orderId: OrderId, contract: Contract, order: Order):
-        """ Places an order. Immediately after the order is submitted correctly, the TWS will start sending events
-         concerning the order's activity via **openOrder** and **orderStatus** methods
+        """Places an order. Immediately after the order is submitted correctly, the TWS will start sending events
+        concerning the order's activity via **openOrder** and **orderStatus** methods
         """
 
         super(IBClientFactory, self).placeOrder(orderId, contract, order)
@@ -88,21 +88,54 @@ class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
         return self.deferredOrdersRequests[orderId]
 
     @publish(order=True)
-    def openOrder(self, orderId: OrderId, contract: Contract, order: Order, orderState: OrderState):
+    def openOrder(
+        self, orderId: OrderId, contract: Contract, order: Order, orderState: OrderState
+    ):
         super(IBClientFactory, self).openOrder(orderId, contract, order, orderState)
         return order.__dict__
 
     @publish(order=True)
     def orderStatus(
-            self, orderId: OrderId, status: str, filled: float, remaining: float, avgFillPrice: float, permId: int,
-            parentId: int, lastFillPrice: float, clientId: int, whyHeld: str, mktCapPrice: float):
+        self,
+        orderId: OrderId,
+        status: str,
+        filled: float,
+        remaining: float,
+        avgFillPrice: float,
+        permId: int,
+        parentId: int,
+        lastFillPrice: float,
+        clientId: int,
+        whyHeld: str,
+        mktCapPrice: float,
+    ):
 
         super(IBClientFactory, self).orderStatus(
-            orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld,
-            mktCapPrice)
+            orderId,
+            status,
+            filled,
+            remaining,
+            avgFillPrice,
+            permId,
+            parentId,
+            lastFillPrice,
+            clientId,
+            whyHeld,
+            mktCapPrice,
+        )
         orderStatus = OrderStatus(
-            orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld,
-            mktCapPrice)
+            orderId,
+            status,
+            filled,
+            remaining,
+            avgFillPrice,
+            permId,
+            parentId,
+            lastFillPrice,
+            clientId,
+            whyHeld,
+            mktCapPrice,
+        )
         return orderStatus.__dict__
 
     @request
@@ -114,29 +147,61 @@ class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
 
     @request
     def reqHistoricalData(
-            self, reqId: int, contract: Contract, endDateTime: str, durationStr: str, barSizeSetting: str,
-            whatToShow: str, useRTH: int, formatDate: int, keepUpToDate: bool, chartOptions: TagValueList,
-            **kwargs) -> Deferred:
+        self,
+        reqId: int,
+        contract: Contract,
+        endDateTime: str,
+        durationStr: str,
+        barSizeSetting: str,
+        whatToShow: str,
+        useRTH: int,
+        formatDate: int,
+        keepUpToDate: bool,
+        chartOptions: TagValueList,
+        **kwargs,
+    ) -> Deferred:
         """ Requests historical data for contract. """
 
         super(IBClientFactory, self).reqHistoricalData(
-            reqId, contract, endDateTime, durationStr, barSizeSetting, whatToShow, useRTH, formatDate, keepUpToDate,
-            chartOptions)
+            reqId,
+            contract,
+            endDateTime,
+            durationStr,
+            barSizeSetting,
+            whatToShow,
+            useRTH,
+            formatDate,
+            keepUpToDate,
+            chartOptions,
+        )
 
         return self.deferredRequests[reqId]
 
     @request
     @resolve
     def reqMktData(
-            self, reqId: int, contract: Contract, genericTickList: str = "", snapshot: bool = False,
-            regulatorySnapshot: bool = False, mktDataOptions=None, **kwargs, ) -> None:
+        self,
+        reqId: int,
+        contract: Contract,
+        genericTickList: str = "",
+        snapshot: bool = False,
+        regulatorySnapshot: bool = False,
+        mktDataOptions=None,
+        **kwargs,
+    ) -> None:
         """ Starts live market data polling for specified contract """
 
         if mktDataOptions is None:
             mktDataOptions = []
 
         super(IBClientFactory, self).reqMktData(
-            reqId, contract, genericTickList, snapshot, regulatorySnapshot, mktDataOptions)
+            reqId,
+            contract,
+            genericTickList,
+            snapshot,
+            regulatorySnapshot,
+            mktDataOptions,
+        )
         self.deferredResults[reqId] = {"reqId": reqId}
         self.activeMktDataSubscriptions.append(reqId)
         self.additionalRequestInfo[reqId] = contract.__dict__
@@ -174,7 +239,9 @@ class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
         return bar.__dict__
 
     @publish
-    def tickPrice(self, reqId: int, tickType: TickType, price: float, attrib: TickAttrib) -> dict:
+    def tickPrice(
+        self, reqId: int, tickType: TickType, price: float, attrib: TickAttrib
+    ) -> dict:
         """ This method is called by IB server when a new tickPrice is available for active live data market lines """
 
         data = {
@@ -211,10 +278,7 @@ class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
 
     @publish
     def historicalDataUpdate(self, reqId: int, bar: BarData) -> dict:
-        data = {
-            "reqId": reqId,
-            "barData": BarData.__dict__
-        }
+        data = {"reqId": reqId, "barData": BarData.__dict__}
         return data
 
     @resolve
@@ -225,7 +289,9 @@ class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
     def contractDetailsEnd(self, reqId: int) -> None:
         pass
 
-    def error(self, reqId: TickerId, errorCode: int = -1, errorString: str = "GenericError") -> None:
+    def error(
+        self, reqId: TickerId, errorCode: int = -1, errorString: str = "GenericError"
+    ) -> None:
         NON_ERROR_CODES = [2104, 2106, 2158]
         if errorCode in NON_ERROR_CODES:
             logger.info(errorString)
@@ -233,5 +299,7 @@ class IBClientFactory(ReconnectingClientFactory, EClient, EWrapper):
             logger.error(f"Error. Id: {reqId} Code: {errorCode} Msg: {errorString}")
 
         if reqId in self.deferredRequests.keys():
-            self.deferredRequests[reqId].callback(IBException(errorCode, errorString, reqId).__dict__)
+            self.deferredRequests[reqId].callback(
+                IBException(errorCode, errorString, reqId).__dict__
+            )
             del self.deferredRequests[reqId]
