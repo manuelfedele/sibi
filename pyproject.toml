@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sibi"
-version = "0.1.5"
+version = "0.1.6"
 description = "Synchronous Interactiver Brokers Interface"
 authors = ["Manuel Fedele <manuelfedele@gmail.com>"]
 license = "MIT"
@@ -20,6 +20,7 @@ redis = "^3.5.3"
 Sphinx = "^3.3.1"
 sphinx-rtd-theme = "^0.5.0"
 black = {version = "^20.8b1", allow-prereleases = true}
+flake8 = "^3.8.4"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

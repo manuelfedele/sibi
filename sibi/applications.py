@@ -4,7 +4,6 @@ from twisted.web import server
 
 from sibi.ib_factory import IBClientFactory
 from sibi.xmlrpc_server import XMLRPCServer
-import sys
 
 
 class Sibi:
